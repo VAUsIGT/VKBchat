@@ -3,6 +3,7 @@ from vkbottle.dispatch.rules import ABCRule
 from config import token
 from loguru import logger
 from colorama import init
+from random import getrandbits
 init()
 from colorama import Fore, Back, Style
 
