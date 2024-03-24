@@ -41,7 +41,6 @@ async def admin_exe(message: Message):
 searching = []  # массив ищущих общения
 talking = []  # массив разговаривающих
 
-
 # создаем текстовые файлы с айди собеседника
 async def create_talk_file(user_id, send_txt_to_user_id):
     # файл нашедшего собеседника
@@ -53,7 +52,7 @@ async def create_talk_file(user_id, send_txt_to_user_id):
     file1.write(user_id)  # запись айди нашедшего
     file1.close()
     # для отслеживания действий
-    print("file created")
+    #print("file created")
 
 
 # отправка сообщения собеседнику
@@ -71,41 +70,41 @@ async def send_msg_to(user_id, msg):
 @bot.on.private_message()  # обрабатывает ВСЕ сообщения
 async def main(message: Message):  # ассинхронная функция принимающая тип message
     if message.text.lower() == "!поиск":
-        await message.answer("Мы ищем собеседника для вас!")  # ответ
+        await message.answer("Вы добавлены в очередь!")  # ответ
         # для отслеживания действий
-        print("!----search")
+        print(f"[пользователем инициализирован поиск]")
         # если есть ищущий собеседника
-        if (len(searching) > 0):
-            # для отслеживания действий
-            print("!----found")
-            # создаем файл с айди собеседников
-            await create_talk_file(str(message.from_id), str(searching[0]))
-            # перемещаем из ищущих в разговаривающих
-            talking.append(str(searching[0]))
-            talking.append(str(message.from_id))
-            # уведомление первого о нахождении собеседника
-            await bot.api.messages.send(peer_id=searching[0], message="Собеседник найден!", random_id=getrandbits(64))
-            # убираем ищущего из массива
-            searching.pop(0)
-            # уведомление второго о собеседнике
-            await message.answer("Собеседник найден!")
+        if (len(searching) >= 1):
+            print("[создан диалог]") # для отслеживания действий
+            try:
+                await create_talk_file(str(message.from_id), str(searching[0]))# создаем файл с айди собеседников
+                talking.append(str(searching[0]))# перемещаем из ищущих в разговаривающих
+                talking.append(str(message.from_id))
+                await bot.api.messages.send(peer_id=searching[0], message="Собеседник найден!", random_id=getrandbits(64))# уведомление первого о нахождении собеседника
+                searching.pop(0)# убираем ищущего из массива
+                await message.answer("Собеседник найден!")# уведомление второго о собеседнике
+                print(Fore.LIGHTGREEN_EX+"file has been created"+Style.RESET_ALL)
+            except:
+                print(Fore.LIGHTRED_EX+"file not created"+Style.RESET_ALL)
+        elif message.text.lower() == "!стоп":
+            searching.pop(0)  # убираем ищущего из массива
+            await message.answer("Поиск прекращён")
         else:
-            # если ищущих нет, то добавляем в массив ищущих
-            searching.append(message.from_id)
+            searching.append(message.from_id)# если ищущих нет, то добавляем в массив ищущих
+            #print(searching, talking)
 
     # проверка на наличие в разговаривающих
     elif (str(message.from_id) in talking):
         # для отслеживания действий
-        print("!----talking")
+        print("[сообщение в диалоге]")
         # отправка сообщения собеседнику
         await send_msg_to(message.from_id, message.text)
 
     # ---------------------------------------------
     else:
-        # await message.answer("Чтобы найти собеседника, нажмите на соответствующую кнопку.\n Или напишите !поиск")  # эхо
-        print(Fore.LIGHTBLUE_EX + f"Пользователь:  {str(message.from_id)} Сообщение: {str(message.text)}")  # логи
-        # await bot.api.messages.send(peer_id=225589402, message=message.text,random_id=getrandbits(64))
+        await message.answer("Чтобы найти собеседника, напишите !поиск")  # эхо
+        print(Fore.LIGHTBLUE_EX + f"Пользователь:  {str(message.from_id)} Сообщение: {str(message.text)}" + Style.RESET_ALL)  # логи
+        #await bot.api.messages.send(peer_id=747292616, message=message.text,random_id=getrandbits(64))
 
-
-print(Fore.YELLOW + "-------------------Бот запущен-------------------", )
+print(Fore.YELLOW + "-------------------Бот запущен-------------------" + Style.RESET_ALL)
 bot.run_forever()
