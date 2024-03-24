@@ -1,11 +1,14 @@
 from vkbottle.bot import Bot, Message
 from vkbottle.dispatch.rules import ABCRule
+from vkbottle.api import API
 from config import token
 from loguru import logger
 from colorama import init
 from random import getrandbits
 init()
 from colorama import Fore, Back, Style
+#для своего бота
+api = API(token)
 
 class AdminRule(ABCRule[Message]): #кастомное правило
     def __init__(self, admins: list):
@@ -14,8 +17,17 @@ class AdminRule(ABCRule[Message]): #кастомное правило
         return event.from_id in self.admins
 
 logger.disable("vkbottle") #логи отключены
-bot=Bot(token=token) #токен из config
+bot=Bot(api=api) #токен из config
 bot.labeler.custom_rules["is_admin"] = AdminRule
+
+
+
+async def text_to_file(user_id, msg):
+    file = open(f"text/{user_id}.txt","a")
+    file.write(msg+"\n")
+    file.close()
+
+    print("текст записан")
 
 @bot.on.private_message(attachment="photo") #   НЕ РАБОТАЕТ
 async def photo_answer(message: Message):
@@ -29,9 +41,16 @@ async def photo_answer(message: Message):
         with open(src, 'wb') as new_file:
             new_file.write(downloaded_file)
 
+#DA = 225589402
+#VY = 747292616
+@bot.on.private_message(is_admin=[])#747292616]) #админка
+async def admin_exe(message: Message):
+    await message.answer(f"Админ написал:\n{message.text}")
+    print(Fore.LIGHTMAGENTA_EX + f"Админ: {str(message.from_id)} Сообщение: {str(message.text)}")  # логи
 
-# DA = 225589402
-# VY = 747292616
+searching = [] #массив ищущих общения
+talking = [] #массив разговаривающих
+
 #создаем текстовые файлы с айди собеседника
 async def create_talk_file(user_id,send_txt_to_user_id):
     #файл нашедшего собеседника
@@ -123,6 +142,8 @@ async def main(message: Message): #ассинхронная функция пр�
         searching.pop(searching.index(message.from_id))
         await message.answer("Вы прекратили поиск")
         print(Fore.LIGHTYELLOW_EX + "[пользователь вышел из поиска]"+Style.RESET_ALL)
+
+
 #-----------обработка левых сообщений:
     else:
 #       во время поиска
@@ -135,5 +156,5 @@ async def main(message: Message): #ассинхронная функция пр�
         #await bot.api.messages.send(peer_id=225589402, message=message.text,random_id=getrandbits(64))
 
 
-print(Fore.YELLOW +"-------------------Бот запущен-------------------", )
+print(Fore.YELLOW +"-------------------Бот запущен-------------------" )
 bot.run_forever()
