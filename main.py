@@ -30,81 +30,104 @@ async def photo_answer(message: Message):
             new_file.write(downloaded_file)
 
 
-# DA = 225589402
-# VY = 747292616
-@bot.on.private_message(is_admin=[])  # 747292616]) #админка
+@bot.on.private_message(is_admin=[])#747292616]) #админка
 async def admin_exe(message: Message):
     await message.answer(f"Админ написал:\n{message.text}")
     print(Fore.LIGHTMAGENTA_EX + f"Админ: {str(message.from_id)} Сообщение: {str(message.text)}")  # логи
 
+searching = [] #массив ищущих общения
+talking = [] #массив разговаривающих
 
-searching = []  # массив ищущих общения
-talking = []  # массив разговаривающих
-
-# создаем текстовые файлы с айди собеседника
-async def create_talk_file(user_id, send_txt_to_user_id):
-    # файл нашедшего собеседника
-    file = open(f"text/{user_id}.txt", "w")
-    file.write(send_txt_to_user_id)  # запись айди найденного
+#создаем текстовые файлы с айди собеседника
+async def create_talk_file(user_id,send_txt_to_user_id):
+    #файл нашедшего собеседника
+    file = open(f"text/{user_id}.txt","w")
+    file.write(send_txt_to_user_id) #запись айди найденного
     file.close()
-    # файл найденного собеседника
+    #файл найденного собеседника
     file1 = open(f"text/{send_txt_to_user_id}.txt", "w")
-    file1.write(user_id)  # запись айди нашедшего
+    file1.write(user_id) #запись айди нашедшего
     file1.close()
-    # для отслеживания действий
-    #print("file created")
+    #для отслеживания действий
+    print("file created")
 
+#получение узер_айди собеседника
+def get_talk_user_id(user_id):
+    file = open(f"text/{user_id}.txt", "r")
+    send_txt_to_user_id = file.readline()
+    file.close()
+    return int(send_txt_to_user_id)
 
-# отправка сообщения собеседнику
-async def send_msg_to(user_id, msg):
-    # открываем файл автора сообщения
-    file = open(f"text/{str(user_id)}.txt", "r")
-    to_send_user_id = file.readline()  # получаем айди собеседника
-    # отправляем сообщение
+#отправка сообщения собеседнику
+async def send_msg_to(user_id,msg):
+    #открываем файл автора сообщения
+    file = open(f"text/{str(user_id)}.txt","r")
+    to_send_user_id = file.readline() #получаем айди собеседника
+    #отправляем сообщение
     await bot.api.messages.send(peer_id=int(to_send_user_id), message=msg, random_id=getrandbits(64))
-    # бета\not ready -> запись диалога в текстовый файл
-    # file.write(f"send: {str(msg)}")
+    #бета\not ready -> запись диалога в текстовый файл
+    #file.write(f"send: {str(msg)}")
     file.close()
 
 
-@bot.on.private_message()  # обрабатывает ВСЕ сообщения
-async def main(message: Message):  # ассинхронная функция принимающая тип message
-    if message.text.lower() == "!поиск":
-        await message.answer("Вы добавлены в очередь!")  # ответ
-        # для отслеживания действий
-        print(f"[пользователем инициализирован поиск]")
-        # если есть ищущий собеседника
-        if (len(searching) >= 1):
-            print("[создан диалог]") # для отслеживания действий
-            try:
-                await create_talk_file(str(message.from_id), str(searching[0]))# создаем файл с айди собеседников
-                talking.append(str(searching[0]))# перемещаем из ищущих в разговаривающих
-                talking.append(str(message.from_id))
-                await bot.api.messages.send(peer_id=searching[0], message="Собеседник найден!", random_id=getrandbits(64))# уведомление первого о нахождении собеседника
-                searching.pop(0)# убираем ищущего из массива
-                await message.answer("Собеседник найден!")# уведомление второго о собеседнике
-                print(Fore.LIGHTGREEN_EX+"file has been created"+Style.RESET_ALL)
-            except:
-                print(Fore.LIGHTRED_EX+"file not created"+Style.RESET_ALL)
-        elif message.text.lower() == "!стоп":
-            searching.pop(0)  # убираем ищущего из массива
-            await message.answer("Поиск прекращён")
+@bot.on.private_message() #обрабатывает ВСЕ сообщения
+async def main(message: Message): #ассинхронная функция принимающая тип message
+#-----------проверка на наличие собеседника\диалога
+    if(str(message.from_id) in talking):
+#       остановки диалога
+        if(message.text.lower()=="!стоп"):
+            #останавливаем у автора !стоп
+            await message.answer("Диалог прекращен")
+            talking.pop(talking.index(str(message.from_id)))
+            #останавливаем диалог у собеседника
+            await bot.api.messages.send(peer_id=int(get_talk_user_id(message.from_id)), message="Диалог прекращен", random_id=getrandbits(64))
+            talking.pop(talking.index(str(get_talk_user_id(message.from_id))))
+#       попытка выйти в поиск во время диалога
+        elif(message.text.lower() == "!поиск"):
+             await message.answer("Вы в диалоге, поэтому поиск не возможен")
+#       обработка ввода неправильной команды во время диалога
+        elif(str(message.text).startswith('!')):
+            await message.answer("Неизвестная команда")
+#       отправка сообщения собеседнику
         else:
-            searching.append(message.from_id)# если ищущих нет, то добавляем в массив ищущих
-            #print(searching, talking)
-
-    # проверка на наличие в разговаривающих
-    elif (str(message.from_id) in talking):
-        # для отслеживания действий
-        print("[сообщение в диалоге]")
-        # отправка сообщения собеседнику
-        await send_msg_to(message.from_id, message.text)
-
-    # ---------------------------------------------
+            # для отслеживания действий
+            print("!----talking")
+            # отправка сообщения собеседнику
+            await send_msg_to(message.from_id, message.text)
+#-----------поиск собеседника после команды !поиск
+    elif message.text.lower()=="!поиск":
+#       проверка наличия в поиске
+        if(message.from_id not in searching):
+            await message.answer("Мы ищем собеседника для вас!") #ответ
+            #для отслеживания действий
+            print("!----search")
+        #   если есть ищущий собеседника
+            if(len(searching) > 0 ):
+                # для отслеживания действий
+                print("!----found")
+                #создаем файл с айди собеседников
+                await create_talk_file(str(message.from_id), str(searching[0]))
+                #перемещаем из ищущих в разговаривающих
+                talking.append(str(searching[0]))
+                talking.append(str(message.from_id))
+                #уведомление первого о нахождении собеседника
+                await bot.api.messages.send(peer_id=searching[0], message="Собеседник найден!", random_id=getrandbits(64))
+                #убираем ищущего из массива
+                searching.pop(0)
+                #уведомление второго о собеседнике
+                await message.answer("Собеседник найден!")
+        #   если ищущих нет, то добавляем в массив ищущих
+            else:
+                searching.append(message.from_id)
+#       если человек в поиске
+        else:
+            await message.answer("Вы уже в поиске")
+#-----------вывод действий в консоль для проверки
     else:
-        await message.answer("Чтобы найти собеседника, напишите !поиск")  # эхо
-        print(Fore.LIGHTBLUE_EX + f"Пользователь:  {str(message.from_id)} Сообщение: {str(message.text)}" + Style.RESET_ALL)  # логи
-        #await bot.api.messages.send(peer_id=747292616, message=message.text,random_id=getrandbits(64))
+        #await message.answer("Чтобы найти собеседника, нажмите на соответствующую кнопку.\n Или напишите !поиск")  # эхо
+        print(Fore.LIGHTBLUE_EX +f"Пользователь:  {str(message.from_id)} Сообщение: {str(message.text)}")    #логи
+        #await bot.api.messages.send(peer_id=225589402, message=message.text,random_id=getrandbits(64))
 
-print(Fore.YELLOW + "-------------------Бот запущен-------------------" + Style.RESET_ALL)
+
+print(Fore.YELLOW +"-------------------Бот запущен-------------------", )
 bot.run_forever()
