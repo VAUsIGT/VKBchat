@@ -30,14 +30,8 @@ async def photo_answer(message: Message):
             new_file.write(downloaded_file)
 
 
-@bot.on.private_message(is_admin=[])#747292616]) #админка
-async def admin_exe(message: Message):
-    await message.answer(f"Админ написал:\n{message.text}")
-    print(Fore.LIGHTMAGENTA_EX + f"Админ: {str(message.from_id)} Сообщение: {str(message.text)}")  # логи
-
-searching = [] #массив ищущих общения
-talking = [] #массив разговаривающих
-
+# DA = 225589402
+# VY = 747292616
 #создаем текстовые файлы с айди собеседника
 async def create_talk_file(user_id,send_txt_to_user_id):
     #файл нашедшего собеседника
@@ -49,7 +43,7 @@ async def create_talk_file(user_id,send_txt_to_user_id):
     file1.write(user_id) #запись айди нашедшего
     file1.close()
     #для отслеживания действий
-    print("file created")
+    print(Fore.LIGHTGREEN_EX+"file has been created"+Style.RESET_ALL)
 
 #получение узер_айди собеседника
 def get_talk_user_id(user_id):
@@ -75,13 +69,15 @@ async def main(message: Message): #ассинхронная функция пр�
 #-----------проверка на наличие собеседника\диалога
     if(str(message.from_id) in talking):
 #       остановки диалога
-        if(message.text.lower()=="!стоп"):
+        if(message.text.lower()=="!выход" or message.text.lower()=="!стоп"):
             #останавливаем у автора !стоп
             await message.answer("Диалог прекращен")
             talking.pop(talking.index(str(message.from_id)))
             #останавливаем диалог у собеседника
-            await bot.api.messages.send(peer_id=int(get_talk_user_id(message.from_id)), message="Диалог прекращен", random_id=getrandbits(64))
+            await bot.api.messages.send(peer_id=int(get_talk_user_id(message.from_id)), message="Собеседник прекратил диалог", random_id=getrandbits(64))
             talking.pop(talking.index(str(get_talk_user_id(message.from_id))))
+            # для отслеживания действий
+            print(Fore.LIGHTRED_EX + "[пользователь прекратил диалог]" + Style.RESET_ALL)
 #       попытка выйти в поиск во время диалога
         elif(message.text.lower() == "!поиск"):
              await message.answer("Вы в диалоге, поэтому поиск не возможен")
@@ -91,7 +87,7 @@ async def main(message: Message): #ассинхронная функция пр�
 #       отправка сообщения собеседнику
         else:
             # для отслеживания действий
-            print("!----talking")
+            print(Fore.LIGHTCYAN_EX+"[сообщение в диалоге]"+Style.RESET_ALL)
             # отправка сообщения собеседнику
             await send_msg_to(message.from_id, message.text)
 #-----------поиск собеседника после команды !поиск
@@ -100,11 +96,11 @@ async def main(message: Message): #ассинхронная функция пр�
         if(message.from_id not in searching):
             await message.answer("Мы ищем собеседника для вас!") #ответ
             #для отслеживания действий
-            print("!----search")
+            print(Fore.LIGHTYELLOW_EX +"[пользователем инициализирован поиск]"+Style.RESET_ALL)
         #   если есть ищущий собеседника
             if(len(searching) > 0 ):
                 # для отслеживания действий
-                print("!----found")
+                print(Fore.LIGHTGREEN_EX+"[создан диалог]"+Style.RESET_ALL)
                 #создаем файл с айди собеседников
                 await create_talk_file(str(message.from_id), str(searching[0]))
                 #перемещаем из ищущих в разговаривающих
@@ -122,10 +118,20 @@ async def main(message: Message): #ассинхронная функция пр�
 #       если человек в поиске
         else:
             await message.answer("Вы уже в поиске")
-#-----------вывод действий в консоль для проверки
+#-----------выход из поиска собеседника
+    elif(message.text == "!стоп" and message.from_id in searching):
+        searching.pop(searching.index(message.from_id))
+        await message.answer("Вы прекратили поиск")
+        print(Fore.LIGHTYELLOW_EX + "[пользователь вышел из поиска]"+Style.RESET_ALL)
+#-----------обработка левых сообщений:
     else:
-        #await message.answer("Чтобы найти собеседника, нажмите на соответствующую кнопку.\n Или напишите !поиск")  # эхо
-        print(Fore.LIGHTBLUE_EX +f"Пользователь:  {str(message.from_id)} Сообщение: {str(message.text)}")    #логи
+#       во время поиска
+        if(message.from_id in searching):
+            await message.answer("Подождите")
+#       не во время поиска
+        else:
+            await message.answer("Чтобы найти собеседника, нажмите на соответствующую кнопку.\n Или напишите !поиск")  # эхо
+        print(Fore.LIGHTBLUE_EX +f"Пользователь:  {str(message.from_id)} Сообщение: {str(message.text)}"+Style.RESET_ALL)    #логи
         #await bot.api.messages.send(peer_id=225589402, message=message.text,random_id=getrandbits(64))
 
 
