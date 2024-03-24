@@ -156,5 +156,5 @@ async def main(message: Message): #ассинхронная функция пр�
         #await bot.api.messages.send(peer_id=225589402, message=message.text,random_id=getrandbits(64))
 
 
-print(Fore.YELLOW +"-------------------Бот запущен-------------------" )
+print(Fore.YELLOW +"-------------------Бот запущен-------------------"+Style.RESET_ALL )
 bot.run_forever()
