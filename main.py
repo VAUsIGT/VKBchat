@@ -25,8 +25,18 @@ async def text_to_file(user_id, msg):
     file.close()
     print("[текст записан]")
 
-#@bot.on.private_message() #   НЕ РАБОТАЕТ
-#async def
+@bot.on.private_message(attachment="photo") #   НЕ РАБОТАЕТ
+async def photo_answer(message: Message):
+    await message.answer("Фото отправлено")
+    from pathlib import Path
+    Path(f'data/photo/{message.from_id}/').mkdir(parents=True, exist_ok=True)
+    url = message.attachments[0].photo.sizes[1].url
+
+    import urllib.request
+    current_time = datetime.datetime.now().time()
+    urllib.request.urlretrieve(url,f"data/photo/{str(message.from_id)}/{str(current_time).replace(':','-')}.png")
+    print("Фото скачено")
+
 
 # DA = 225589402
 # VY = 747292616
