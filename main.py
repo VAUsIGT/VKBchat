@@ -25,18 +25,35 @@ async def text_to_file(user_id, msg):
     file.close()
     print("[текст записан]")
 
-@bot.on.private_message(attachment="photo") #   НЕ РАБОТАЕТ
+@bot.on.private_message(attachment="photo")
 async def photo_answer(message: Message):
     await message.answer("Фото отправлено")
     from pathlib import Path
     Path(f'data/photo/{message.from_id}/').mkdir(parents=True, exist_ok=True)
-    url = message.attachments[0].photo.sizes[1].url
+    photo_cacha = [] #для отправки нескольких фото разом
 
     import urllib.request
-    current_time = datetime.datetime.now().time()
-    urllib.request.urlretrieve(url,f"data/photo/{str(message.from_id)}/{str(current_time).replace(':','-')}.png")
-    print("Фото скачено")
 
+    #проходим по вложениям
+    for i in range(len(message.attachments)):
+        current_time = datetime.datetime.now().time()
+        #получаем ссылку на фото
+        url = message.attachments[i].photo.sizes[1].url
+        #сохраняем фото
+        urllib.request.urlretrieve(url,f"data/photo/{str(message.from_id)}/{str(current_time).replace(':','-')}.png")
+
+
+        print("Фото скачено")
+        #загрузка фото в сообщения от бота
+        photo = await photo_uploader.upload(
+            file_source=f"data/photo/{message.from_id}/{str(current_time).replace(':','-')}.png",
+            peer_id = message.peer_id,
+        )
+
+        #добавляем в массиф фото
+        photo_cacha.append(photo)
+    #отправка нескольких фото разом
+    await message.answer(attachment = photo_cacha)
 
 # DA = 225589402
 # VY = 747292616
