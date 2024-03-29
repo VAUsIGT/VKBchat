@@ -18,6 +18,7 @@ class AdminRule(ABCRule[Message]):  # кастомное правило
 logger.disable("vkbottle")  # логи отключены
 bot=Bot(token=token) # токен из config
 bot.labeler.custom_rules["is_admin"] = AdminRule
+photo_uploader = PhotoMessageUploader(bot.api)
 
 async def text_to_file(user_id, msg):
     file = open(f"text/{user_id}.txt","a")
@@ -27,7 +28,7 @@ async def text_to_file(user_id, msg):
 
 @bot.on.private_message(attachment="photo")
 async def photo_answer(message: Message):
-    await message.answer("Фото отправлено")
+    await message.answer("🤖 Фото отправлено")
     from pathlib import Path
     Path(f'data/photo/{message.from_id}/').mkdir(parents=True, exist_ok=True)
     photo_cacha = [] #для отправки нескольких фото разом
@@ -43,7 +44,7 @@ async def photo_answer(message: Message):
         urllib.request.urlretrieve(url,f"data/photo/{str(message.from_id)}/{str(current_time).replace(':','-')}.png")
 
 
-        print("Фото скачено")
+        print(Fore.LIGHTGREEN_EX + f"[загружено фото]"+Style.RESET_ALL+f" [{str(current_time)[:8]}]")
         #загрузка фото в сообщения от бота
         photo = await photo_uploader.upload(
             file_source=f"data/photo/{message.from_id}/{str(current_time).replace(':','-')}.png",
