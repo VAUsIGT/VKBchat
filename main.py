@@ -1,3 +1,6 @@
+import shutil
+
+import requests
 from vkbottle.bot import Bot, Message
 from vkbottle.dispatch.rules import ABCRule
 from vkbottle import PhotoMessageUploader
@@ -9,6 +12,8 @@ from random import getrandbits
 init()
 from colorama import Fore, Back, Style
 import datetime
+
+
 class AdminRule(ABCRule[Message]):  # кастомное правило
     def __init__(self, admins: list):
         self.admins = admins
@@ -20,42 +25,6 @@ bot=Bot(token=token) # токен из config
 bot.labeler.custom_rules["is_admin"] = AdminRule
 photo_uploader = PhotoMessageUploader(bot.api)
 
-async def text_to_file(user_id, msg):
-    file = open(f"text/{user_id}.txt","a")
-    file.write(msg+"\n")
-    file.close()
-    print("[текст записан]")
-
-@bot.on.private_message(attachment="photo")
-async def photo_answer(message: Message):
-    await message.answer("🤖 Фото отправлено")
-    from pathlib import Path
-    Path(f'data/photo/{message.from_id}/').mkdir(parents=True, exist_ok=True)
-    photo_cacha = [] #для отправки нескольких фото разом
-
-    import urllib.request
-
-    #проходим по вложениям
-    for i in range(len(message.attachments)):
-        current_time = datetime.datetime.now().time()
-        #получаем ссылку на фото
-        url = message.attachments[i].photo.sizes[1].url
-        #сохраняем фото
-        urllib.request.urlretrieve(url,f"data/photo/{str(message.from_id)}/{str(current_time).replace(':','-')}.png")
-
-
-        print(Fore.LIGHTGREEN_EX + f"[загружено фото]"+Style.RESET_ALL+f" [{str(current_time)[:8]}]")
-        #загрузка фото в сообщения от бота
-        photo = await photo_uploader.upload(
-            file_source=f"data/photo/{message.from_id}/{str(current_time).replace(':','-')}.png",
-            peer_id = message.peer_id,
-        )
-
-        #добавляем в массиф фото
-        photo_cacha.append(photo)
-    #отправка нескольких фото разом
-    await message.answer(attachment = photo_cacha)
-
 # DA = 225589402
 # VY = 747292616
 @bot.on.private_message(is_admin = [])  # админка
@@ -63,8 +32,17 @@ async def admin_exe(message: Message):
     await message.answer(f"🤖 Админ написал:\n{message.text}")
     print(Fore.LIGHTMAGENTA_EX + f"Админ: {str(message.from_id)} Сообщение: {str(message.text)}")  # логи
 
+
+
 searching = []  # массив ищущих общения
 talking = []  # массив разговаривающих
+
+#хз, не помню что это и для чего
+async def text_to_file(user_id, msg):
+    file = open(f"text/{user_id}.txt","a")
+    file.write(msg+"\n")
+    file.close()
+    print("[текст записан]")
 
 # создаем текстовые файлы с айди собеседника
 async def create_talk_file(user_id,send_txt_to_user_id):
@@ -97,9 +75,56 @@ async def send_msg_to(user_id,msg):
     # file.write(f"send: {str(msg)}")
     file.close()
 
+#сообщение админа для юзера
 async def adm_mes(user_id,message):
     current_time = datetime.datetime.now().time()  # текущее время
     print(Fore.LIGHTRED_EX+f"ЖАЛОБА от [{user_id}]"+Style.RESET_ALL+f" [{str(current_time)[:8]}]")
+
+
+#-----------------------------------------------------------------
+#-----------------------------------------------------------------
+@bot.on.private_message(attachment="photo")
+async def photo_answer(message: Message):
+    import urllib.request
+    # from PIL import Image
+    # from skimage import io
+    # import cv2
+    # import wget
+#   проверка на наличие юзера в диалоге
+    if str(message.from_id) in talking:
+        #создание папки фото отправителя
+        from pathlib import Path
+        Path(f'data/photo/{message.from_id}/').mkdir(parents=True, exist_ok=True)
+        photo_cacha = []  # для отправки нескольких фото разом
+
+        #проходим по вложениям
+        for i in range(len(message.attachments)):
+            current_time = datetime.datetime.now().time()
+            #получаем ссылку на фото
+            url = message.attachments[i].photo.sizes[1].url
+            #сохраняем фото
+            urllib.request.urlretrieve(url,f"data/photo/{str(message.from_id)}/{str(current_time).replace(':','-')}.png")
+
+            #wget.download(url,f"data/photo/{str(message.from_id)}/{str(current_time).replace(':','-')}.png")
+            #откладка
+            print(Fore.LIGHTGREEN_EX + f"[загружено фото]"+Style.RESET_ALL+f" [{str(current_time)[:8]}]")
+            #загрузка фото в сообщения от бота
+            photo = await photo_uploader.upload(
+                file_source=f"data/photo/{message.from_id}/{str(current_time).replace(':','-')}.png",
+                peer_id = message.peer_id,
+            )
+
+            #добавляем в массиф фото
+            photo_cacha.append(photo)
+        #отправка нескольких фото разом
+        #await message.answer(attachment = photo_cacha)
+        await bot.api.messages.send(peer_id=get_talk_user_id(message.from_id), attachment=photo_cacha, random_id=getrandbits(64))
+        #уведомление отправителя об отправке фото
+        await message.answer("🤖 Фото отправлено")
+#   ответ на отсуствие диалога
+    else:
+        await message.answer("Вы не в диалоге")
+
 
 @bot.on.private_message()  # обрабатывает ВСЕ сообщения
 async def main(message: Message):  # ассинхронная функция принимающая тип message
@@ -180,6 +205,8 @@ async def main(message: Message):  # ассинхронная функция п�
             await message.answer("🤖 Чтобы найти собеседника, нажмите на соответствующую кнопку.\n Либо напишите !поиск или !п", keyboard=KEYBOARD_FIRST)  # эхо
         print(Fore.LIGHTBLUE_EX + f"Пользователь:  {str(message.from_id)} Сообщение: {str(message.text)}"+Style.RESET_ALL + f" [{str(current_time)[:8]}]")    # логи
         # await bot.api.messages.send(peer_id=225589402, message=message.text,random_id=getrandbits(64))
+
+
 
 current_time = datetime.datetime.now().time()  # текущее время
 print(Fore.YELLOW + f"-------------------Бот запущен в {str(current_time)[:8]}-------------------")
