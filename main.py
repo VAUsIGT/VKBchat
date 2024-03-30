@@ -1,5 +1,4 @@
 import shutil
-
 import requests
 from vkbottle.bot import Bot, Message
 from vkbottle.dispatch.rules import ABCRule
@@ -12,7 +11,6 @@ from random import getrandbits
 init()
 from colorama import Fore, Back, Style
 import datetime
-
 
 class AdminRule(ABCRule[Message]):  # кастомное правило
     def __init__(self, admins: list):
@@ -31,8 +29,6 @@ photo_uploader = PhotoMessageUploader(bot.api)
 async def admin_exe(message: Message):
     await message.answer(f"🤖 Админ написал:\n{message.text}")
     print(Fore.LIGHTMAGENTA_EX + f"Админ: {str(message.from_id)} Сообщение: {str(message.text)}")  # логи
-
-
 
 searching = []  # массив ищущих общения
 talking = []  # массив разговаривающих
@@ -55,7 +51,7 @@ async def create_talk_file(user_id,send_txt_to_user_id):
     file1.write(user_id)  # запись айди нашедшего
     file1.close()
     # для отслеживания действий
-    print(Fore.LIGHTGREEN_EX+"был создан файл"+Style.RESET_ALL)
+    print(Fore.LIGHTGREEN_EX+f"[был создан файл диалога {user_id}]"+Style.RESET_ALL+f" [{str(current_time)[:8]}]")
 
 # получение узер_айди собеседника
 def get_talk_user_id(user_id):
@@ -70,6 +66,7 @@ async def send_msg_to(user_id,msg):
     file = open(f"text/{str(user_id)}.txt","r")
     to_send_user_id = file.readline()  # получаем айди собеседника
     # отправляем сообщение
+    msg="👤: "+msg
     await bot.api.messages.send(peer_id=int(to_send_user_id), message=msg, random_id=getrandbits(64), keyboard=KEYBOARD_DIALOG)
     # бета\not ready -> запись диалога в текстовый файл
     # file.write(f"send: {str(msg)}")
@@ -79,7 +76,6 @@ async def send_msg_to(user_id,msg):
 async def adm_mes(user_id,message):
     current_time = datetime.datetime.now().time()  # текущее время
     print(Fore.LIGHTRED_EX+f"ЖАЛОБА от [{user_id}]"+Style.RESET_ALL+f" [{str(current_time)[:8]}]")
-
 
 #-----------------------------------------------------------------
 #-----------------------------------------------------------------
@@ -101,7 +97,8 @@ async def photo_answer(message: Message):
         for i in range(len(message.attachments)):
             current_time = datetime.datetime.now().time()
             #получаем ссылку на фото
-            url = message.attachments[i].photo.sizes[1].url
+            url = message.attachments[i].photo.sizes[4].url
+            print(url)
             #сохраняем фото
             urllib.request.urlretrieve(url,f"data/photo/{str(message.from_id)}/{str(current_time).replace(':','-')}.png")
 
@@ -125,7 +122,6 @@ async def photo_answer(message: Message):
     else:
         await message.answer("Вы не в диалоге")
 
-
 @bot.on.private_message()  # обрабатывает ВСЕ сообщения
 async def main(message: Message):  # ассинхронная функция принимающая тип message
     current_time = datetime.datetime.now().time()  # текущее время
@@ -140,7 +136,7 @@ async def main(message: Message):  # ассинхронная функция п�
             await bot.api.messages.send(peer_id=int(get_talk_user_id(message.from_id)), message="🤖 Собеседник прекратил диалог😞\nЧтобы начать новый, напишите !поиск или !п", random_id=getrandbits(64),keyboard=KEYBOARD_FIRST)
             talking.pop(talking.index(str(get_talk_user_id(message.from_id))))
             # для отслеживания действий
-            print(Fore.LIGHTRED_EX + "[пользователь прекратил диалог]" + Style.RESET_ALL+f" [{str(current_time)[:8]}]")
+            print(Fore.LIGHTRED_EX + f"[пользователь {message.from_id} прекратил диалог]" + Style.RESET_ALL+f" [{str(current_time)[:8]}]")
 #       попытка выйти в поиск во время диалога
         elif message.text.lower() == "!поиск":
              await message.answer("🤖 Вы в диалоге, поэтому поиск не возможен", keyboard=KEYBOARD_DIALOG)
@@ -154,20 +150,20 @@ async def main(message: Message):  # ассинхронная функция п�
 #       отправка сообщения собеседнику
         else:
             # для отслеживания действий
-            print(Fore.LIGHTCYAN_EX+"[сообщение в диалоге]"+Style.RESET_ALL+f" [{str(current_time)[:8]}]")
+            print(Fore.LIGHTCYAN_EX+f"[сообщение в диалоге {message.from_id}]"+Style.RESET_ALL+f" [{str(current_time)[:8]}]")
             # отправка сообщения собеседнику
             await send_msg_to(message.from_id, message.text)
 # -----------поиск собеседника после команды !поиск
     elif message.text.lower() == "!поиск" or message.text.lower() == "!п":
 #       проверка наличия в поиске
         if message.from_id not in searching:
-            await message.answer(f"🤖 Мы ищем собеседника для вас!\nАктивных диалогов: {len(talking)}",keyboard=KEYBOARD_SEARCH) #ответ
+            await message.answer(f"🤖 Мы ищем собеседника для вас!\nАктивных диалогов: {len(talking)//2}",keyboard=KEYBOARD_SEARCH) #ответ
             # для отслеживания действий
-            print(Fore.LIGHTYELLOW_EX + "[пользователем инициализирован поиск]" + Style.RESET_ALL + f" [{str(current_time)[:8]}]")
+            print(Fore.LIGHTYELLOW_EX + f"[пользователем {message.from_id} инициализирован поиск]" + Style.RESET_ALL + f" [{str(current_time)[:8]}]")
         #   если есть ищущий собеседника
             if len(searching) > 0 :
                 # для отслеживания действий
-                print(Fore.LIGHTGREEN_EX+"[создан диалог]"+Style.RESET_ALL+f" [{str(current_time)[:8]}]")
+                print(Fore.LIGHTGREEN_EX+f"[создан диалог {message.from_id}]"+Style.RESET_ALL+f" [{str(current_time)[:8]}]")
                 # создаем файл с айди собеседников
                 await create_talk_file(str(message.from_id), str(searching[0]))
                 # перемещаем из ищущих в разговаривающих
@@ -193,7 +189,7 @@ async def main(message: Message):  # ассинхронная функция п�
 #   репорт в диалоге
     elif message.text == "!админ" or message.text == "!жалоба":
         await message.answer("🤖 Номер вашего последнего диалога отправлен админам", keyboard=KEYBOARD_FIRST)
-        await adm_mes(message.from_id,message.text)
+        await adm_mes(message.from_id, message.text)
 
 #   обработка левых сообщений:
     else:
@@ -205,8 +201,6 @@ async def main(message: Message):  # ассинхронная функция п�
             await message.answer("🤖 Чтобы найти собеседника, нажмите на соответствующую кнопку.\n Либо напишите !поиск или !п", keyboard=KEYBOARD_FIRST)  # эхо
         print(Fore.LIGHTBLUE_EX + f"Пользователь:  {str(message.from_id)} Сообщение: {str(message.text)}"+Style.RESET_ALL + f" [{str(current_time)[:8]}]")    # логи
         # await bot.api.messages.send(peer_id=225589402, message=message.text,random_id=getrandbits(64))
-
-
 
 current_time = datetime.datetime.now().time()  # текущее время
 print(Fore.YELLOW + f"-------------------Бот запущен в {str(current_time)[:8]}-------------------")
