@@ -81,6 +81,7 @@ async def adm_mes(user_id,message):
 #-----------------------------------------------------------------
 @bot.on.private_message(attachment="photo")
 async def photo_answer(message: Message):
+    #print(message.attachments)  # проверка настроек фото
     import urllib.request
     # from PIL import Image
     # from skimage import io
@@ -88,43 +89,67 @@ async def photo_answer(message: Message):
     # import wget
 #   проверка на наличие юзера в диалоге
     if str(message.from_id) in talking:
-        #создание папки фото отправителя
+        # создание папки фото отправителя
         from pathlib import Path
         Path(f'data/photo/{message.from_id}/').mkdir(parents=True, exist_ok=True)
         photo_cacha = []  # для отправки нескольких фото разом
-
-        #проходим по вложениям
+        # проходим по вложениям
         for i in range(len(message.attachments)):
             current_time = datetime.datetime.now().time()
-            #получаем ссылку на фото
-            url = message.attachments[i].photo.sizes[4].url
-            print(url)
-            #сохраняем фото
+            # получаем ссылку на фото
+            url = message.attachments[i].photo.sizes[len(message.attachments[i].photo.sizes)-1].url
+            #print(url)  # проверка данных url
+            # сохраняем фото
             urllib.request.urlretrieve(url,f"data/photo/{str(message.from_id)}/{str(current_time).replace(':','-')}.png")
-
             #wget.download(url,f"data/photo/{str(message.from_id)}/{str(current_time).replace(':','-')}.png")
-            #откладка
+            # отладка
             print(Fore.LIGHTGREEN_EX + f"[загружено фото]"+Style.RESET_ALL+f" [{str(current_time)[:8]}]")
-            #загрузка фото в сообщения от бота
+            # загрузка фото в сообщения от бота
             photo = await photo_uploader.upload(
                 file_source=f"data/photo/{message.from_id}/{str(current_time).replace(':','-')}.png",
-                peer_id = message.peer_id,
+                peer_id=message.peer_id,
             )
-
-            #добавляем в массиф фото
+            # добавляем в массив фото
             photo_cacha.append(photo)
-        #отправка нескольких фото разом
+        # отправка нескольких фото разом
         #await message.answer(attachment = photo_cacha)
         await bot.api.messages.send(peer_id=get_talk_user_id(message.from_id), attachment=photo_cacha, random_id=getrandbits(64))
-        #уведомление отправителя об отправке фото
-        await message.answer("🤖 Фото отправлено")
-#   ответ на отсуствие диалога
+        # уведомление отправителя об отправке фото
+        await message.answer("🤖 Фото отправлено", keyboard=KEYBOARD_DIALOG)
+    # ответ на отсутствие диалога
     else:
-        await message.answer("Вы не в диалоге")
+        await message.answer("🤖 Вы не в диалоге", keyboard=KEYBOARD_FIRST)
+
+@bot.on.private_message(attachment="sticker") # обработка стикеров
+async def sticker_answer(message: Message):
+    #print(message.attachments)  # проверка настроек стикера
+    import urllib.request
+    # проверка на наличие юзера в диалоге
+    if str(message.from_id) in talking:
+        # создание папки стикеров отправителя
+        from pathlib import Path
+        Path(f'data/stickers/{message.from_id}/').mkdir(parents=True, exist_ok=True)
+        #print("папка")
+        current_time = datetime.datetime.now().time()
+        # получаем ссылку на стикер
+        url = message.attachments[0].sticker.images[1].url
+        #print(url)  # проверка данных url
+        # сохраняем стикер
+        urllib.request.urlretrieve(url,
+                                   f"data/stickers/{str(message.from_id)}/{str(current_time).replace(':', '-')}.png")
+        # отладка
+        print(Fore.LIGHTBLUE_EX + f"[отправлен стикер {message.from_id}]" + Style.RESET_ALL + f" [{str(current_time)[:8]}]")
+        # загрузка стикера в сообщения от бота
+        sticker = await photo_uploader.upload(file_source=f"data/stickers/{message.from_id}/{str(current_time).replace(':', '-')}.png", peer_id=message.peer_id)
+        await bot.api.messages.send(peer_id=get_talk_user_id(message.from_id), attachment=sticker, random_id=getrandbits(64))
+    # ответ на отсутствие диалога
+    else:
+        await message.answer("🤖 Вы не в диалоге", keyboard=KEYBOARD_FIRST)
 
 @bot.on.private_message()  # обрабатывает ВСЕ сообщения
-async def main(message: Message):  # ассинхронная функция принимающая тип message
+async def main(message: Message):  # асинхронная функция принимающая тип message
     current_time = datetime.datetime.now().time()  # текущее время
+    #print(message.attachments) #проверка настроек сообщения
 # -----------проверка на наличие собеседника\диалога
     if str(message.from_id) in talking:
             # остановки диалога
@@ -157,7 +182,7 @@ async def main(message: Message):  # ассинхронная функция п�
     elif message.text.lower() == "!поиск" or message.text.lower() == "!п":
 #       проверка наличия в поиске
         if message.from_id not in searching:
-            await message.answer(f"🤖 Мы ищем собеседника для вас!\nАктивных диалогов: {len(talking)//2}",keyboard=KEYBOARD_SEARCH) #ответ
+            await message.answer(f"🤖 Мы ищем собеседника для вас!\nАктивных диалогов: {len(talking)//2}", keyboard=KEYBOARD_SEARCH) #ответ
             # для отслеживания действий
             print(Fore.LIGHTYELLOW_EX + f"[пользователем {message.from_id} инициализирован поиск]" + Style.RESET_ALL + f" [{str(current_time)[:8]}]")
         #   если есть ищущий собеседника
