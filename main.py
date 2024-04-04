@@ -22,23 +22,47 @@ logger.disable("vkbottle")  # логи отключены
 bot=Bot(token=token) # токен из config
 bot.labeler.custom_rules["is_admin"] = AdminRule
 photo_uploader = PhotoMessageUploader(bot.api)
-
-# DA = 225589402
-# VY = 747292616
-@bot.on.private_message(is_admin = [])  # админка
-async def admin_exe(message: Message):
-    await message.answer(f"🤖 Админ написал:\n{message.text}")
-    print(Fore.LIGHTMAGENTA_EX + f"Админ: {str(message.from_id)} Сообщение: {str(message.text)}")  # логи
-
+OPEN = open("KD.txt", "r") #счётчик всех диалогов
+KD = int(OPEN.readline())
+OPEN.close()
 searching = []  # массив ищущих общения
 talking = []  # массив разговаривающих
+all_one = []  # все юзеры хоть раз искавшие за сегодня
 
-#хз, не помню что это и для чего
-async def text_to_file(user_id, msg):
-    file = open(f"text/{user_id}.txt","a")
-    file.write(msg+"\n")
-    file.close()
-    print("[текст записан]")
+# DA = 225589402
+# EL = 747292616
+@bot.on.private_message(is_admin = [191685935])  # админка
+async def admin_exe(message: Message):
+    print(Fore.LIGHTMAGENTA_EX + f"Админ: {str(message.from_id)} Сообщение: {str(message.text)}")  # логи
+    if message.text.lower()[:8] == "написать":  # например: "написать 225589402 тралаЛА"
+        pripiska = "[сообщение от админа]: "
+        await bot.api.messages.send(peer_id=int(message.text[9:18]), message=pripiska+message.text[19:], random_id=getrandbits(64))
+    elif message.text.lower() == "статистика":
+        await message.answer(f"Ку, ищут: {len(searching)}, в диалоге: {len(talking)}.")
+    elif message.text.lower()[:5] == "поиск":  # добавление юзера
+        searching.append(int(message.text.lower()[6:15]))
+        await message.answer(f"Пользователь {str(message.text.lower()[6:15])} добавлен.")
+    elif message.text.lower()[:6] == "беседа":  # добавление юзера
+        talking.append(int(message.text.lower()[7:16]))
+        await message.answer(f"Пользователь {str(message.text.lower()[7:16])} добавлен.")
+    elif message.text.lower() == "кто":  # выдаёт списки в поиске и диалоге
+        await message.answer(f"в поиске: {searching} \nв диалоге: {talking}")
+    elif message.text.lower() == "сохранить":  # сохраняет сегодняшних пользователей
+        with open('all_users.txt') as OPEN:
+            for line in OPEN:
+                all_one.append(line)
+            all_users = set(all_one)
+        with open('all_users.txt', 'w') as OPEN:   #842584665 225589402
+            for i in all_users:
+                OPEN.writelines(str(i))
+            await message.answer("Успешно")
+    elif message.text.lower()[:8] == "рассылка":  # письмо всем пользователям
+        with open('all_users.txt') as OPEN:
+            for line in OPEN:
+                try: await bot.api.messages.send(peer_id=int(line), message="🤖 Рассылка: "+message.text[8:], random_id=getrandbits(64))
+                except: pass
+    else:
+        await message.answer(f"[админка] Команды: \n'статистика',\n'написать [id] [message]', \n'поиск [message]', \n'беседа [message]', \n'кто', \n'рассылка [message]', \n'сохранить'")
 
 # создаем текстовые файлы с айди собеседника
 async def create_talk_file(user_id,send_txt_to_user_id):
@@ -148,20 +172,25 @@ async def sticker_answer(message: Message):
 
 @bot.on.private_message()  # обрабатывает ВСЕ сообщения
 async def main(message: Message):  # асинхронная функция принимающая тип message
+    global KD
     current_time = datetime.datetime.now().time()  # текущее время
     #print(message.attachments) #проверка настроек сообщения
 # -----------проверка на наличие собеседника\диалога
     if str(message.from_id) in talking:
             # остановки диалога
         if message.text.lower() == "!выход" or message.text.lower() == "!стоп":
+            OPEN = open("KD.txt", "w")  # сохраняем в файл кол-ва диалогов
+            KD += 1
+            OPEN.write(str(KD))
+            OPEN.close()
             # останавливаем у автора !стоп
-            await message.answer("🤖 Диалог остановлен. 😞\nЧтобы начать новый, напишите !поиск или !п", keyboard=KEYBOARD_FIRST)
+            await message.answer(f"🤖 Диалог №{KD} остановлен. 😞\nЧтобы начать новый, напишите !поиск или !п", keyboard=KEYBOARD_FIRST)
             talking.pop(talking.index(str(message.from_id)))
             # останавливаем диалог у собеседника
-            await bot.api.messages.send(peer_id=int(get_talk_user_id(message.from_id)), message="🤖 Собеседник прекратил диалог😞\nЧтобы начать новый, напишите !поиск или !п", random_id=getrandbits(64),keyboard=KEYBOARD_FIRST)
+            await bot.api.messages.send(peer_id=int(get_talk_user_id(message.from_id)), message=f"🤖 Собеседник прекратил диалог №{KD} 😞\nЧтобы начать новый, напишите !поиск или !п", random_id=getrandbits(64),keyboard=KEYBOARD_FIRST)
             talking.pop(talking.index(str(get_talk_user_id(message.from_id))))
             # для отслеживания действий
-            print(Fore.LIGHTRED_EX + f"[пользователь {message.from_id} прекратил диалог]" + Style.RESET_ALL+f" [{str(current_time)[:8]}]")
+            print(Fore.LIGHTRED_EX + f"[пользователь {message.from_id} прекратил диалог {KD}]" + Style.RESET_ALL+f" [{str(current_time)[:8]}]")
 #       попытка выйти в поиск во время диалога
         elif message.text.lower() == "!поиск":
              await message.answer("🤖 Вы в диалоге, поэтому поиск не возможен", keyboard=KEYBOARD_DIALOG)
@@ -180,26 +209,36 @@ async def main(message: Message):  # асинхронная функция пр�
             await send_msg_to(message.from_id, message.text)
 # -----------поиск собеседника после команды !поиск
     elif message.text.lower() == "!поиск" or message.text.lower() == "!п":
+        all_one.append(str(message.from_id)+"\n")  # добавление в список юзеров за запуск
 #       проверка наличия в поиске
         if message.from_id not in searching:
             await message.answer(f"🤖 Мы ищем собеседника для вас!\nАктивных диалогов: {len(talking)//2}", keyboard=KEYBOARD_SEARCH) #ответ
             # для отслеживания действий
             print(Fore.LIGHTYELLOW_EX + f"[пользователем {message.from_id} инициализирован поиск]" + Style.RESET_ALL + f" [{str(current_time)[:8]}]")
         #   если есть ищущий собеседника
-            if len(searching) > 0 :
+            if len(searching) > 0:
                 # для отслеживания действий
-                print(Fore.LIGHTGREEN_EX+f"[создан диалог {message.from_id}]"+Style.RESET_ALL+f" [{str(current_time)[:8]}]")
+                print(Fore.LIGHTGREEN_EX+f"[пользователем {message.from_id} создан диалог {KD}]"+Style.RESET_ALL+f" [{str(current_time)[:8]}]")
                 # создаем файл с айди собеседников
                 await create_talk_file(str(message.from_id), str(searching[0]))
                 # перемещаем из ищущих в разговаривающих
                 talking.append(str(searching[0]))
                 talking.append(str(message.from_id))
-                # уведомление первого о нахождении собеседника
-                await bot.api.messages.send(peer_id=searching[0], message="🤖 Собеседник найден.\nОбщайтесь! :)\n!стоп — остановить диалог", random_id=getrandbits(64), keyboard=KEYBOARD_DIALOG)
-                # убираем ищущего из массива
-                searching.pop(0)
-                # уведомление второго о собеседнике
-                await message.answer("🤖 Собеседник найден.\nОбщайтесь! :)\n!стоп — остановить диалог",keyboard=KEYBOARD_DIALOG)
+                try:  # всё хорошо, создаёт диалог
+                    # уведомление первого о нахождении собеседника
+                    await bot.api.messages.send(peer_id=searching[0], message="🤖 Собеседник найден.\nОбщайтесь! :)\n!стоп — остановить диалог", random_id=getrandbits(64), keyboard=KEYBOARD_DIALOG)
+                    # убираем ищущего из массива
+                    searching.pop(0)
+                    # уведомление второго о собеседнике
+                    await message.answer("🤖 Собеседник найден.\nОбщайтесь! :)\n!стоп — остановить диалог", keyboard=KEYBOARD_DIALOG)
+                except:  # защита, если 1 пользователь заблочит бота
+                    await message.answer("🤖 Мы нашли вам собеседника, но он запретил боту отправку сообщений. Вновь добавили вас в очередь.", keyboard=KEYBOARD_DIALOG)
+                    print(Fore.LIGHTRED_EX + f"[пользователь {str(searching[0])} заблокировал бота в поиске]" + Style.RESET_ALL + f" [{str(current_time)[:8]}]")
+                    searching.pop(0)
+                    talking.pop(talking.index(str(message.from_id)))
+                    talking.pop(talking.index(str(get_talk_user_id(message.from_id))))
+                    searching.append(message.from_id)
+                    print(Fore.LIGHTRED_EX + "[ошибка пропущена]" + Style.RESET_ALL + f" [{str(current_time)[:8]}]")
         #   если ищущих нет, то добавляем в массив ищущих
             else:
                 searching.append(message.from_id)
@@ -220,7 +259,7 @@ async def main(message: Message):  # асинхронная функция пр�
     else:
 #       во время поиска
         if message.from_id in searching:
-            await message.answer("🤖 Подождите", keyboard=KEYBOARD_SEARCH)
+            await message.answer("🤖 Вы находитесь в очереди, пожалуйста подождите", keyboard=KEYBOARD_SEARCH)
 #       не во время поиска
         else:
             await message.answer("🤖 Чтобы найти собеседника, нажмите на соответствующую кнопку.\n Либо напишите !поиск или !п", keyboard=KEYBOARD_FIRST)  # эхо
