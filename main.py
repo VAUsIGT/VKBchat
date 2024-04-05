@@ -90,8 +90,13 @@ async def send_msg_to(user_id,msg):
     file = open(f"text/{str(user_id)}.txt","r")
     to_send_user_id = file.readline()  # получаем айди собеседника
     # отправляем сообщение
-    msg="👤: "+msg
-    await bot.api.messages.send(peer_id=int(to_send_user_id), message=msg, random_id=getrandbits(64), keyboard=KEYBOARD_DIALOG)
+    if msg.reply_message != None:
+        msg.text = "\n\n>" + msg.reply_message.text[0:] + "\n👤: "+ msg.text
+    elif (msg.fwd_messages != []):
+        msg.text = "\n\n>" + msg.fwd_messages[0].text + "\n👤: " + msg.text
+    else:
+        msg.text ="👤: "+msg.text
+    await bot.api.messages.send(peer_id=int(to_send_user_id), message=msg.text, random_id=getrandbits(64), keyboard=KEYBOARD_DIALOG)
     # бета\not ready -> запись диалога в текстовый файл
     # file.write(f"send: {str(msg)}")
     file.close()
@@ -107,10 +112,6 @@ async def adm_mes(user_id,message):
 async def photo_answer(message: Message):
     #print(message.attachments)  # проверка настроек фото
     import urllib.request
-    # from PIL import Image
-    # from skimage import io
-    # import cv2
-    # import wget
 #   проверка на наличие юзера в диалоге
     if str(message.from_id) in talking:
         # создание папки фото отправителя
@@ -206,9 +207,12 @@ async def main(message: Message):  # асинхронная функция пр�
             # для отслеживания действий
             print(Fore.LIGHTCYAN_EX+f"[сообщение в диалоге {message.from_id}]"+Style.RESET_ALL+f" [{str(current_time)[:8]}]")
             # отправка сообщения собеседнику
-            await send_msg_to(message.from_id, message.text)
+            await send_msg_to(message.from_id, message)
 # -----------поиск собеседника после команды !поиск
     elif message.text.lower() == "!поиск" or message.text.lower() == "!п":
+        f = await bot.api.groups.is_member("anon_chat_bt",message.from_id)
+        if f:
+            await message.answer("Подпишитесь на группу или НАСЛАЖДАЙСЯ ЭТИМ СООБЩЕНИЕМ!")
         all_one.append(str(message.from_id)+"\n")  # добавление в список юзеров за запуск
 #       проверка наличия в поиске
         if message.from_id not in searching:
