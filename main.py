@@ -2,7 +2,7 @@ import shutil
 import requests
 from vkbottle.bot import Bot, Message
 from vkbottle.dispatch.rules import ABCRule
-from vkbottle import PhotoMessageUploader
+from vkbottle import PhotoMessageUploader, VideoUploader
 from keyb import KEYBOARD_SEARCH,KEYBOARD_FIRST, KEYBOARD_DIALOG
 from config import token
 from loguru import logger
@@ -11,6 +11,7 @@ from random import getrandbits
 init()
 from colorama import Fore, Back, Style
 import datetime
+import urllib.request
 
 class AdminRule(ABCRule[Message]):  # кастомное правило
     def __init__(self, admins: list):
@@ -22,6 +23,7 @@ logger.disable("vkbottle")  # логи отключены
 bot=Bot(token=token) # токен из config
 bot.labeler.custom_rules["is_admin"] = AdminRule
 photo_uploader = PhotoMessageUploader(bot.api)
+video_uploader = VideoUploader(bot.api)
 OPEN = open("KD.txt", "r") #счётчик всех диалогов
 KD = int(OPEN.readline())
 OPEN.close()
@@ -108,10 +110,31 @@ async def adm_mes(user_id,message):
 
 #-----------------------------------------------------------------
 #-----------------------------------------------------------------
+@bot.on.private_message(attachment="audio_message")
+async def audio_message_answer(message: Message):
+    print("!23")
+@bot.on.private_message(attachment="video")
+async def audio_message_answer(message: Message):
+    # print(message.attachments[0].video.access_key)
+    vd = video_uploader.generate_attachment_string("video",message.attachments[0].video.owner_id,message.attachments[0].video.id,message.attachments[0].video.access_key)
+    url = "https://vk.com/im?sel=-club225214826&z="+vd
+
+    import yt_dlp
+    ydl_opts = {'outtmpl': 'downloads/1234.mp4', 'quiet': True}
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        ydl.download([url])
+        info = ydl.extract_info(url, download=True)
+    #video = await video_uploader.upload(url,peer_id=message.peer_id)
+
+    #await message.answer(attachment=video)
+    #urllib.request.urlretrieve(url, f"data/video/{video}.mp4")
+    print(url)
+
+
+#-----------------------------------------------------------------
 @bot.on.private_message(attachment="photo")
 async def photo_answer(message: Message):
     #print(message.attachments)  # проверка настроек фото
-    import urllib.request
 #   проверка на наличие юзера в диалоге
     if str(message.from_id) in talking:
         # создание папки фото отправителя
@@ -174,6 +197,7 @@ async def sticker_answer(message: Message):
 @bot.on.private_message()  # обрабатывает ВСЕ сообщения
 async def main(message: Message):  # асинхронная функция принимающая тип message
     global KD
+
     current_time = datetime.datetime.now().time()  # текущее время
     #print(message.attachments) #проверка настроек сообщения
 # -----------проверка на наличие собеседника\диалога
