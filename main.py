@@ -2,7 +2,7 @@ import shutil
 import requests
 from vkbottle.bot import Bot, Message
 from vkbottle.dispatch.rules import ABCRule
-from vkbottle import PhotoMessageUploader, VideoUploader
+from vkbottle import PhotoMessageUploader, VoiceMessageUploader , DocUploader
 from keyb import KEYBOARD_SEARCH,KEYBOARD_FIRST, KEYBOARD_DIALOG
 from config import token
 from loguru import logger
@@ -19,11 +19,9 @@ class AdminRule(ABCRule[Message]):  # кастомное правило
     async def check(self, event: Message):
         return event.from_id in self.admins
 
-logger.disable("vkbottle")  # логи отключены
+#logger.disable("vkbottle")  # логи отключены
 bot=Bot(token=token) # токен из config
 bot.labeler.custom_rules["is_admin"] = AdminRule
-photo_uploader = PhotoMessageUploader(bot.api)
-video_uploader = VideoUploader(bot.api)
 OPEN = open("KD.txt", "r") #счётчик всех диалогов
 KD = int(OPEN.readline())
 OPEN.close()
@@ -112,29 +110,25 @@ async def adm_mes(user_id,message):
 #-----------------------------------------------------------------
 @bot.on.private_message(attachment="audio_message")
 async def audio_message_answer(message: Message):
-    print("!23")
+    audio_uploader = VoiceMessageUploader (bot.api)
+    url = message.attachments[0].audio_message.link_ogg
+    urllib.request.urlretrieve(url, "134.ogg")
+    audio = await audio_uploader.upload(file_source="134.ogg",peer_id=message.peer_id,title="1234")
+    await message.answer("123",attachment=audio)
+
 @bot.on.private_message(attachment="video")
 async def audio_message_answer(message: Message):
-    # print(message.attachments[0].video.access_key)
-    vd = video_uploader.generate_attachment_string("video",message.attachments[0].video.owner_id,message.attachments[0].video.id,message.attachments[0].video.access_key)
-    url = "https://vk.com/im?sel=-club225214826&z="+vd
+    await message.answer("Видео невозможно отправить")
+    print("Пользователь отправил видео")
 
-    import yt_dlp
-    ydl_opts = {'outtmpl': 'downloads/1234.mp4', 'quiet': True}
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        ydl.download([url])
-        info = ydl.extract_info(url, download=True)
-    #video = await video_uploader.upload(url,peer_id=message.peer_id)
 
-    #await message.answer(attachment=video)
-    #urllib.request.urlretrieve(url, f"data/video/{video}.mp4")
-    print(url)
 
 
 #-----------------------------------------------------------------
 @bot.on.private_message(attachment="photo")
 async def photo_answer(message: Message):
     #print(message.attachments)  # проверка настроек фото
+    photo_uploader = PhotoMessageUploader(bot.api)
 #   проверка на наличие юзера в диалоге
     if str(message.from_id) in talking:
         # создание папки фото отправителя
@@ -171,6 +165,7 @@ async def photo_answer(message: Message):
 @bot.on.private_message(attachment="sticker") # обработка стикеров
 async def sticker_answer(message: Message):
     #print(message.attachments)  # проверка настроек стикера
+    photo_uploader = PhotoMessageUploader(bot.api)
     import urllib.request
     # проверка на наличие юзера в диалоге
     if str(message.from_id) in talking:
