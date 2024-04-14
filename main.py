@@ -2,7 +2,7 @@ import shutil
 import requests
 from vkbottle.bot import Bot, Message
 from vkbottle.dispatch.rules import ABCRule
-from vkbottle import PhotoMessageUploader, VoiceMessageUploader , DocUploader
+from vkbottle import PhotoMessageUploader, VoiceMessageUploader
 from keyb import KEYBOARD_SEARCH,KEYBOARD_FIRST, KEYBOARD_DIALOG
 from config import token
 from loguru import logger
@@ -19,7 +19,7 @@ class AdminRule(ABCRule[Message]):  # кастомное правило
     async def check(self, event: Message):
         return event.from_id in self.admins
 
-#logger.disable("vkbottle")  # логи отключены
+logger.disable("vkbottle")  # логи отключены
 bot=Bot(token=token) # токен из config
 bot.labeler.custom_rules["is_admin"] = AdminRule
 OPEN = open("KD.txt", "r") #счётчик всех диалогов
@@ -97,8 +97,6 @@ async def send_msg_to(user_id,msg):
     else:
         msg.text ="👤: "+msg.text
     await bot.api.messages.send(peer_id=int(to_send_user_id), message=msg.text, random_id=getrandbits(64), keyboard=KEYBOARD_DIALOG)
-    # бета\not ready -> запись диалога в текстовый файл
-    # file.write(f"send: {str(msg)}")
     file.close()
 
 #сообщение админа для юзера
@@ -111,18 +109,38 @@ async def adm_mes(user_id,message):
 @bot.on.private_message(attachment="audio_message")
 async def audio_message_answer(message: Message):
     audio_uploader = VoiceMessageUploader (bot.api)
-    url = message.attachments[0].audio_message.link_ogg
-    urllib.request.urlretrieve(url, "134.ogg")
-    audio = await audio_uploader.upload(file_source="134.ogg",peer_id=message.peer_id,title="1234")
-    await message.answer("123",attachment=audio)
+    #   проверка на наличие юзера в диалоге
+    if str(message.from_id) in talking:
+        # создание папки голосовых отправителя
+        from pathlib import Path
+        Path(f'data/audio_msg/{message.from_id}/').mkdir(parents=True, exist_ok=True)
+        current_time = datetime.datetime.now().time()
+        # получаем ссылку на голосовое
+        url = message.attachments[0].audio_message.link_ogg
+        # сохраняем голос
+        urllib.request.urlretrieve(url,f"data/audio_msg/{str(message.from_id)}/{str(current_time).replace(':', '-')}.ogg")
+        # отладка
+        print(Fore.LIGHTGREEN_EX + f"[загружено голосовое]" + Style.RESET_ALL + f" [{str(current_time)[:8]}]")
+        # загрузка голос в сообщения от бота
+        audio = await audio_uploader.upload(
+            file_source=f"data/audio_msg/{message.from_id}/{str(current_time).replace(':', '-')}.ogg",
+            peer_id=message.peer_id,
+            title=f"{str(current_time).replace(':', '-')}"
+        )
+        # отправка
+        await bot.api.messages.send(peer_id=get_talk_user_id(message.from_id),
+                                    attachment=audio,
+                                    random_id=getrandbits(64))
+        # уведомление отправителя об отправке голос
+        await message.answer("🤖 Голосовое отправлено", keyboard=KEYBOARD_DIALOG)
+    # ответ на отсутствие диалога
+    else:
+        await message.answer("🤖 Вы не в диалоге", keyboard=KEYBOARD_FIRST)
 
 @bot.on.private_message(attachment="video")
 async def audio_message_answer(message: Message):
     await message.answer("Видео невозможно отправить")
     print("Пользователь отправил видео")
-
-
-
 
 #-----------------------------------------------------------------
 @bot.on.private_message(attachment="photo")
@@ -140,10 +158,8 @@ async def photo_answer(message: Message):
             current_time = datetime.datetime.now().time()
             # получаем ссылку на фото
             url = message.attachments[i].photo.sizes[len(message.attachments[i].photo.sizes)-1].url
-            #print(url)  # проверка данных url
             # сохраняем фото
             urllib.request.urlretrieve(url,f"data/photo/{str(message.from_id)}/{str(current_time).replace(':','-')}.png")
-            #wget.download(url,f"data/photo/{str(message.from_id)}/{str(current_time).replace(':','-')}.png")
             # отладка
             print(Fore.LIGHTGREEN_EX + f"[загружено фото]"+Style.RESET_ALL+f" [{str(current_time)[:8]}]")
             # загрузка фото в сообщения от бота
