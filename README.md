@@ -1,4 +1,21 @@
 # VKBchat
 anonchat on vkbottle
+
 update pip: py -m pip install --upgrade pip
-Packages: colorama, vkbottle, loguru
+
+Packages: colorama, vkbottle, loguru, requests
+
+# Текущая версия 4.2
+В версии 4.1:
+
+Проект разделён на файлы, упорядочены команды и добавлены пояснения к коду
+
+В версии 4.2:
+
+Добавлена команда "отладка" для админа
+
+Добавлено указание даты при запуске бота в консоли
+
+Отменено разделение команд на обычные и админские
+
+Добавлена защита от ссылок

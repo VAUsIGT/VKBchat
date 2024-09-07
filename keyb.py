@@ -1,0 +1,20 @@
+from vkbottle import Keyboard, KeyboardButtonColor, Text
+KEYBOARD_FIRST = (
+    Keyboard(one_time=True, inline=False)
+    .add(Text("!поиск"), color=KeyboardButtonColor.POSITIVE)
+    .add(Text("!жалоба"), color=KeyboardButtonColor.PRIMARY)
+    .get_json()
+)
+KEYBOARD_SEARCH = (#и диалог тоже)
+    Keyboard(one_time=True, inline=False)
+    .add(Text("!стоп"), color=KeyboardButtonColor.NEGATIVE)
+    .get_json()
+)
+KEYBOARD_DIALOG = (
+    Keyboard(one_time=True, inline=False)
+    .add(Text("!стоп"), color=KeyboardButtonColor.NEGATIVE)
+    .add(Text("!жалоба"), color=KeyboardButtonColor.PRIMARY)
+    #.row()
+    #.add(Text("Button 3"))
+    .get_json()
+)
