@@ -1,11 +1,6 @@
 #
 # ФАЙЛ С АДМИНСКИМИ УТЕХАМИ
 #
-
-
-
-
-
 from libs import *
 init()
 
@@ -14,7 +9,6 @@ class AdminRule(ABCRule[Message]):  # кастомное правило
         self.admins = admins
     async def check(self, event: Message):
         return event.from_id in self.admins
-
 
 current_time = datetime.datetime.now().time()  # текущее время
 logger.disable("vkbottle")  # логи отключены
